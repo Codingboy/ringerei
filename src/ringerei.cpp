@@ -4,7 +4,7 @@
 #include <ring.hpp>
 
 void encodeDir(QDir& dir, QFile& pwFile);
-void encodeFile(QFile& file, QFile& pwFile);
+bool encodeFile(QFile& file, QFile& pwFile);
 void encodeHome();
 void decodeHome();
 
@@ -28,24 +28,35 @@ void encodeDir(QDir& dir, QFile& pwFile)
 	}
 }
 
-void encodeFile(QFile& file, QFile& pwFile)
+bool encodeFile(QFile& file, QFile& pwFile)
 {
 	QFile out(QFileInfo(file).absoluteFilePath()+".enc");
 	if (out.exists() || !out.isWritable())
 	{
-		return;
+		return false;
 	}
 	char* pw[256];
 //	char* salt[1024];
 	CryptoPP::AutoSeededRandomPool rng;
 	rng.GenerateBlock((byte*)pw, 256);
 //	rng.GenerateBlock((byte*)salt, 1024);
-/*	out.open(QIODevice::WriteOnly);
-	out.write((const char*)salt, 1024);
+/*	if !(out.open(QIODevice::WriteOnly))
+	{
+		return false;
+	}
+	if (out.write((const char*)salt, 1024) != 1024)
+	{
+		out.close();
+		return false;
+	}
 	Ring ring((const unsigned char*)pw, 256, (const unsigned char*)salt, 1024, 16);
 	unsigned int treated = 0;
 	char buf[1024];
-	file.open(QIODevice::ReadOnly);
+	if (!file.open(QIODevice::ReadOnly))
+	{
+		out.close();
+		return false;
+	}
 	while (treated < file.size())
 	{
 		unsigned int readSize = 1024;
@@ -53,20 +64,49 @@ void encodeFile(QFile& file, QFile& pwFile)
 		{
 			readSize = file.size()-treated;
 		}
-		file.read(buf, readSize);
+		if (file.read(buf, readSize) != readSize)
+		{
+			out.close();
+			file.close();
+			return false;
+		}
 		ring.encode((unsigned char*)buf, readSize);
-		out.write(buf, readSize);
+		if (out.write(buf, readSize) != readSize)
+		{
+			out.close();
+			file.close();
+			return false;
+		}
 		treated += readSize;
 	}
 	file.close();
 	out.close();*/
-	pwFile.write(QFileInfo(out).absoluteFilePath().toStdString().c_str());
+	if (pwFile.write(QFileInfo(out).absoluteFilePath().toStdString().c_str()) != QFileInfo(out).absoluteFilePath().length())
+	{
+		return false;
+	}
 	char newline = '\n';
-	pwFile.write(&newline, 1);
-	pwFile.write((const char*)pw, 256);
-	pwFile.write(&newline, 1);
-	pwFile.flush();
-	//file.remove();
+	if (pwFile.write(&newline, 1) != 1)
+	{
+		return false;
+	}
+	if (pwFile.write((const char*)pw, 256) != 256)
+	{
+		return false;
+	}
+	if (pwFile.write(&newline, 1) != 1)
+	{
+		return false;
+	}
+	if (!pwFile.flush())
+	{
+		return false;
+	}
+	/*if (!file.remove())
+	{
+		return false;
+	}*/
+	return true;
 }
 
 void encodeHome()
