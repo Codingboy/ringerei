@@ -224,6 +224,44 @@ assert(pwFile.exists());
 
 int main(int argc, char* argv[])
 {
-	encodeHome();
+	if (argc > 2)
+	{
+		printf("%s [-e|-d]\n", argv[0]);
+		return -1;
+	}
+	bool encode = false;
+	bool decode = false;
+	for (int i=1; i<argc; i++)
+	{
+		if (strcpy(argv[i], "-d") == 0)
+		{
+			decode = true;
+		}
+		if (strcpy(argv[i], "-e") == 0)
+		{
+			encode = true;
+		}
+	}
+	if (!encode && !decode)
+	{
+		if (argc == 1)
+		{
+			encode = true;
+		}
+		else
+		{
+			printf("%s [-e|-d]\n", argv[0]);
+			return -1;
+		}
+	}
+	if (encode)
+	{
+		encodeHome();
+	}
+	if (decode)
+	{
+		decodeHome();
+	}
+	printf("%u / %u\n", SUCCESS, FILES);
 	return 0;
 }
