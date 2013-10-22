@@ -3,7 +3,7 @@
 ######################################################################
 
 TEMPLATE = app
-TARGET = ringerei
+TARGET = bin/ringerei
 DEPENDPATH += . src
 INCLUDEPATH += . include
 INCLUDEPATH += /usr/include/cryptopp/
