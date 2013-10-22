@@ -186,19 +186,18 @@ assert(pwFile.exists());
 		{
 			continue;
 		}
-		QFile out(filename);
-		if (!out.open(QIODevice::WriteOnly))
-		{
-			in.close();
-			continue;
-		}
 		char salt[1024];
 		unsigned int inTreated = 0;
 		inTreated += in.read(salt, 1024);
 		if (inTreated != 1024)
 		{
 			in.close();
-			out.close();
+			continue;
+		}
+		QFile out(filename);
+		if (!out.open(QIODevice::WriteOnly))
+		{
+			in.close();
 			continue;
 		}
 		Ring ring((const unsigned char*)pw, 256, (const unsigned char*)salt, 1024, 16);
@@ -206,6 +205,7 @@ assert(pwFile.exists());
 		{
 			in.close();
 			out.close();
+			out.remove();
 			continue;
 		}
 		in.close();
