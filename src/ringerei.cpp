@@ -2,7 +2,7 @@
 #include <QDir>
 #include <QFile>
 #include <ring.hpp>
-#include <cstdio>
+
 void encodeDir(QDir& dir, QFile& pwFile);
 void encodeFile(QFile& file, QFile& pwFile);
 void encodeHome();
