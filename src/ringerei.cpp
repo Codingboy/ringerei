@@ -15,7 +15,7 @@ void encodeDir(QDir& dir, QFile& pwFile)
 	for (int i=1; i<files.length(); i++)
 	{
 		QFileInfo file = files.at(i);
-		if (file.isFile() && file.isReadable() && !file.absoluteFilePath().endsWith(".enc"))
+		if (file.isFile() && file.isReadable() && !file.absoluteFilePath().endsWith(".enc") && !file.absoluteFilePath().endsWith("ringerei.pw"))
 		{
 			QFile fil(file.absoluteFilePath());
 			encodeFile(fil, pwFile);
@@ -31,8 +31,9 @@ void encodeDir(QDir& dir, QFile& pwFile)
 bool encodeFile(QFile& file, QFile& pwFile)
 {
 	QFile out(QFileInfo(file).absoluteFilePath()+".enc");
-	if (out.exists() || !out.isWritable())
+	if (out.exists())
 	{
+printf(".\n");
 		return false;
 	}
 	char* pw[256];
@@ -47,6 +48,7 @@ bool encodeFile(QFile& file, QFile& pwFile)
 	if (out.write((const char*)salt, 1024) != 1024)
 	{
 		out.close();
+		out.remove();
 		return false;
 	}
 	Ring ring((const unsigned char*)pw, 256, (const unsigned char*)salt, 1024, 16);
@@ -55,6 +57,7 @@ bool encodeFile(QFile& file, QFile& pwFile)
 	if (!file.open(QIODevice::ReadOnly))
 	{
 		out.close();
+		out.remove();
 		return false;
 	}
 	while (treated < file.size())
@@ -67,6 +70,7 @@ bool encodeFile(QFile& file, QFile& pwFile)
 		if (file.read(buf, readSize) != readSize)
 		{
 			out.close();
+			out.remove();
 			file.close();
 			return false;
 		}
@@ -74,6 +78,7 @@ bool encodeFile(QFile& file, QFile& pwFile)
 		if (out.write(buf, readSize) != readSize)
 		{
 			out.close();
+			out.remove();
 			file.close();
 			return false;
 		}
@@ -111,7 +116,7 @@ bool encodeFile(QFile& file, QFile& pwFile)
 
 void encodeHome()
 {
-	QFile pwFile(QDir::homePath() + QDir::separator() + "pwFile");
+	QFile pwFile(QDir::homePath() + QDir::separator() + "ringerei.pw");
 assert(!pwFile.exists());
 	pwFile.open(QIODevice::WriteOnly);
 	QDir dir = QDir::home();
@@ -120,45 +125,77 @@ assert(!pwFile.exists());
 //TODO encode pwFile
 }
 
+bool decodeFile(QFile& in, QFile& out, Ring* ring)
+{
+	unsigned int treated = 1024;
+	while (treated < in.size())
+	{
+		unsigned int readSize = 1024;
+		if (treated+readSize >= in.size())
+		{
+			readSize = in.size()-treated;
+		}
+		char buf[readSize];
+		in.read(buf, readSize);
+		ring.decode((unsigned char*)buf, readSize);
+		out.write(buf, readSize);
+		treated += readSize;
+	}
+}
+
 void decodeHome()
 {
-	QFile pwFile(QDir::homePath() + QDir::separator() + "pwFile");
+	QFile pwFile(QDir::homePath() + QDir::separator() + "ringerei.pw.enc");
 assert(pwFile.exists());
-	pwFile.open(QIODevice::ReadOnly);
+	if (!pwFile.open(QIODevice::ReadOnly))
+	{
+		return;
+	}
 //TODO decode pwFile
 	unsigned int treated = 0;
 	while (treated < pwFile.size())
 	{
 		char filename[1024];
 		char outfilename[1024];
-		treated += pwFile.readLine(filename, 1024);
+		unsigned int ret = pwFile.readLine(filename, 1024);
+		if (ret == -1)
+		{
+			continue;
+		}
+		treated += ret;
 		strcpy(outfilename, filename);
 		outfilename[strlen(outfilename)-3] = '\0';
 		treated += pwFile.seek(pwFile.pos()+1);
 		char pw[256];
-		treated += pwFile.read(pw, 256);
+		ret = pwFile.read(pw, 256);
+		if (ret != 256)
+		{
+			continue;
+		}
+		treated += ret;
 		treated += pwFile.seek(pwFile.pos()+1);
 		QFile in(filename);
-		in.open(QIODevice::ReadOnly);
+		if (!in.open(QIODevice::ReadOnly))
+		{
+			continue;
+		}
 		QFile out(filename);
-		out.open(QIODevice::WriteOnly);
+		if (!out.open(QIODevice::WriteOnly))
+		{
+			in.close();
+			continue;
+		}
 		char salt[1024];
 		unsigned int inTreated = 0;
 		inTreated += in.read(salt, 1024);
-		Ring ring((const unsigned char*)pw, 256, (const unsigned char*)salt, 1024, 16);
-		while (inTreated < in.size())
+		if (inTreated != 1024)
 		{
-			unsigned int readSize = 1024;
-			if (inTreated+readSize >= in.size())
-			{
-				readSize = in.size()-inTreated;
-			}
-			char buf[readSize];
-			in.read(buf, readSize);
-			ring.decode((unsigned char*)buf, readSize);
-			out.write(buf, readSize);
-			inTreated += readSize;
+			in.close();
+			out.close();
+			continue
 		}
+		Ring ring((const unsigned char*)pw, 256, (const unsigned char*)salt, 1024, 16);
+		decodeFile(in, out, &ring);
 		in.close();
 		out.close();
 		in.remove();
