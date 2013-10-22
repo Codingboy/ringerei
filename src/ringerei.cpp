@@ -8,6 +8,9 @@ bool encodeFile(QFile& file, QFile& pwFile);
 void encodeHome();
 void decodeHome();
 
+unsigned int FILES = 0;
+unsigned int SUCCESS = 0;
+
 void encodeDir(QDir& dir, QFile& pwFile)
 {
 	dir.setFilter(QDir::NoDotAndDotDot | QDir::Dirs | QDir::Files);
@@ -30,10 +33,10 @@ void encodeDir(QDir& dir, QFile& pwFile)
 
 bool encodeFile(QFile& file, QFile& pwFile)
 {
+	FILES++;
 	QFile out(QFileInfo(file).absoluteFilePath()+".enc");
 	if (out.exists())
 	{
-printf(".\n");
 		return false;
 	}
 	char* pw[256];
@@ -111,6 +114,7 @@ printf(".\n");
 	{
 		return false;
 	}*/
+	SUCCESS++;
 	return true;
 }
 
@@ -147,6 +151,7 @@ bool decodeFile(QFile& in, QFile& out, Ring* ring)
 		}
 		treated += readSize;
 	}
+	SUCCESS++;
 	return true;
 }
 
@@ -162,6 +167,7 @@ assert(pwFile.exists());
 	unsigned int treated = 0;
 	while (treated < pwFile.size())
 	{
+		FILES++;
 		char filename[1024];
 		char outfilename[1024];
 		int ret = pwFile.readLine(filename, 1024);
