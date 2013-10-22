@@ -136,11 +136,18 @@ bool decodeFile(QFile& in, QFile& out, Ring* ring)
 			readSize = in.size()-treated;
 		}
 		char buf[readSize];
-		in.read(buf, readSize);
-		ring.decode((unsigned char*)buf, readSize);
-		out.write(buf, readSize);
+		if (in.read(buf, readSize) != readSize)
+		{
+			return false;
+		}
+		ring->decode((unsigned char*)buf, readSize);
+		if (out.write(buf, readSize) != readSize)
+		{
+			return false;
+		}
 		treated += readSize;
 	}
+	return true;
 }
 
 void decodeHome()
@@ -157,7 +164,7 @@ assert(pwFile.exists());
 	{
 		char filename[1024];
 		char outfilename[1024];
-		unsigned int ret = pwFile.readLine(filename, 1024);
+		int ret = pwFile.readLine(filename, 1024);
 		if (ret == -1)
 		{
 			continue;
@@ -192,10 +199,15 @@ assert(pwFile.exists());
 		{
 			in.close();
 			out.close();
-			continue
+			continue;
 		}
 		Ring ring((const unsigned char*)pw, 256, (const unsigned char*)salt, 1024, 16);
-		decodeFile(in, out, &ring);
+		if (!decodeFile(in, out, &ring))
+		{
+			in.close();
+			out.close();
+			continue;
+		}
 		in.close();
 		out.close();
 		in.remove();
@@ -204,7 +216,8 @@ assert(pwFile.exists());
 	pwFile.remove();
 }
 
-int main()
+int main(int argc, char* argv[])
 {
 	encodeHome();
+	return 0;
 }
